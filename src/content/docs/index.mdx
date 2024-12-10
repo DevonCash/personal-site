@@ -1,36 +1,61 @@
 ---
-title: Welcome to Starlight
-description: Get started building your docs site with Starlight.
+title: devon.cash
+description: Personal projects of Devon Cash
 template: splash
 hero:
-  tagline: Congrats on setting up a new Starlight project!
-  image:
-    file: ../../assets/houston.webp
-  actions:
-    - text: Example Guide
-      link: /guides/example/
-      icon: right-arrow
-    - text: Read the Starlight docs
-      link: https://starlight.astro.build
-      icon: external
-      variant: minimal
+  tagline: The unfinished ruins of my personal projects.
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
+import { Card, CardGrid, LinkButton} from '@astrojs/starlight/components';
 
-## Next steps
+## Rulesets
 
 <CardGrid stagger>
-	<Card title="Update content" icon="pencil">
-		Edit `src/content/docs/index.mdx` to see this page change.
+	<Card title="Ex Nihilo">
+		A minimalist roleplaying game, built for a single page.
+		<LinkButton href="/rulesets/ex-nihilo">Read more</LinkButton>
 	</Card>
-	<Card title="Add new content" icon="add-document">
-		Add Markdown or MDX files to `src/content/docs` to create new pages.
+	<Card title="Pilgrimage">
+		A mythological roleplaying game about self discovery.
 	</Card>
-	<Card title="Configure your site" icon="setting">
-		Edit your `sidebar` and other config in `astro.config.mjs`.
+	<Card title="Descendents">
+		A sci-fi tactical RPG inspired by Halo and Titanfall, focused on combined arms combat.
 	</Card>
-	<Card title="Read the docs" icon="open-book">
-		Learn more in [the Starlight Docs](https://starlight.astro.build/).
+</CardGrid>
+
+## Modules
+
+<CardGrid stagger>
+	<Card title="Advanced Hardsuits">
+		A collection of pilot gear for use with LANCER, inspired by Titanfall.
+	</Card>
+	<Card title="The Luminous Order">
+		A meta-class system for space-faring 5th Edition Dungeons and Dragons, inspired by Destiny.
+	</Card>
+	<Card title="LANCER: Scarcity">
+		A module for LANCER detailing additional rules for scarcity and survival.
+	</Card>
+	<Card title="Worlds Without Number: Eberron">
+		A conversion of Eberron player options for use with Worlds Without Number.
+	</Card>
+</CardGrid>
+
+## Settings
+
+<CardGrid stagger>
+	<Card title="Karadol" >
+		A frontier setting inspired by the Wild West, built for 5th Edition Dungeons and Dragons.
+	</Card>
+	<Card title="Ymir">
+		A system-spanning sci-fi setting inspired by Norse myth and the Expanse, created for use with Uncharted Worlds (PBTA).
+	</Card>
+	<Card title="Isha">
+		A deep desert setting of ancient esoterica and cosmic horror, built for 5th Edition Dungeons and Dragons.
+	</Card>
+	<Card title="Adris">
+		An isolated archapelago built on the bones of a fallen empire, adapted for a custom system called Pilgrimage.
+	</Card>
+	<Card title="Firmament">
+		A mythical setting inspired by biblical cosmology, built for Godbound.
 	</Card>
 </CardGrid>

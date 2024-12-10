@@ -1,0 +1,700 @@
+---
+// CommentSection.astro
+interface Props {
+  sectionId: string;
+}
+
+const { sectionId } = Astro.props;
+---
+
+<section class="commentable-section" data-section-id={sectionId}>
+  <div class="content">
+    <slot />
+  </div>
+
+  <dialog class="comment-dialog">
+    <form class="comment-form">
+      <div class="selected-text-display">
+        <h3>Add comment to:</h3>
+        <blockquote></blockquote>
+      </div>
+
+      <div class="form-group">
+        <label>Name (optional)</label>
+        <input type="text" name="name" />
+      </div>
+
+      <div class="form-group">
+        <label>Email (required, not displayed)</label>
+        <input type="email" name="email" required />
+      </div>
+
+      <input
+        type="text"
+        name="honeypot"
+        class="honeypot"
+        tabindex="-1"
+        autocomplete="off"
+      />
+
+      <div class="form-group">
+        <label>Your comment</label>
+        <textarea name="content" required rows="4"></textarea>
+      </div>
+
+      <input type="hidden" name="selectedText" />
+      <input type="hidden" name="timestamp" />
+
+      <div class="button-group">
+        <button type="button" class="cancel-btn">Cancel</button>
+        <button type="submit" class="submit-btn">Post Comment</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="comments-list"></div>
+</section>
+
+<script>
+  class CommentSection {
+    section: any;
+    sectionId: any;
+    content: any;
+    dialog: any;
+    form: any;
+    commentsList: any;
+    selectedTextDisplay: any;
+    cancelBtn: any;
+    submitBtn: any;
+    highlightableContent: any;
+    commentLocations: Map<any, any>;
+    constructor(element: HTMLElement) {
+      this.section = element;
+      this.sectionId = element.dataset.sectionId;
+      this.content = element.querySelector(".content");
+      this.dialog = element.querySelector(".comment-dialog");
+      this.form = element.querySelector(".comment-form");
+      this.commentsList = element.querySelector(".comments-list");
+      this.selectedTextDisplay = element.querySelector(
+        ".selected-text-display blockquote"
+      );
+      this.cancelBtn = element.querySelector(".cancel-btn");
+      this.submitBtn = element.querySelector(".submit-btn");
+
+      this.highlightableContent =
+        element.querySelector<HTMLElement>(".content")?.innerHTML;
+      this.commentLocations = new Map();
+
+      this.loadUserInfo();
+      this.initializeListeners();
+      this.loadComments();
+    }
+
+    loadUserInfo() {
+      const storedName = localStorage.getItem("commenter-name");
+      const storedEmail = localStorage.getItem("commenter-email");
+
+      if (storedName) {
+        this.form.querySelector('[name="name"]').value = storedName;
+      }
+      if (storedEmail) {
+        this.form.querySelector('[name="email"]').value = storedEmail;
+      }
+    }
+
+    saveUserInfo() {
+      const name = this.form.querySelector('[name="name"]').value;
+      const email = this.form.querySelector('[name="email"]').value;
+
+      localStorage.setItem("commenter-name", name);
+      localStorage.setItem("commenter-email", email);
+    }
+
+    initializeListeners() {
+      this.cancelBtn.addEventListener("click", () => this.closeDialog());
+      this.form.addEventListener("submit", (e: any) => this.handleSubmit(e));
+
+      document.addEventListener("mouseup", (e) => {
+        if (!this.dialog.open) {
+          this.handleSelection(e);
+        }
+      });
+
+      // Close floating button when clicking outside
+      document.addEventListener("mousedown", (e) => {
+        if (!(e.target as Element)?.closest(".floating-comment-button")) {
+          this.removeAddCommentButton();
+        }
+      });
+    }
+
+    handleSelection(event: MouseEvent) {
+      const selection = window.getSelection();
+      const text = selection?.toString().trim();
+
+      if (text && (event.target as Element)?.closest(".content")) {
+        this.showAddCommentButton(event, text);
+      } else {
+        this.removeAddCommentButton();
+      }
+    }
+
+    showAddCommentButton(
+      event: { pageX: number; pageY: number },
+      selectedText: string
+    ) {
+      this.removeAddCommentButton();
+
+      const button = document.createElement("button");
+      button.textContent = "Add Comment";
+      button.className = "floating-comment-button";
+      button.style.position = "absolute";
+      button.style.left = `${event.pageX + 10}px`;
+      button.style.top = `${event.pageY + 10}px`;
+
+      button.addEventListener("click", () => {
+        this.removeAddCommentButton();
+        this.openCommentDialog(selectedText);
+      });
+
+      document.body.appendChild(button);
+    }
+
+    removeAddCommentButton() {
+      const existingButton = document.querySelector(".floating-comment-button");
+      if (existingButton) {
+        existingButton.remove();
+      }
+    }
+
+    openCommentDialog(selectedText: any) {
+      this.selectedTextDisplay.textContent = selectedText;
+      this.form.selectedText.value = selectedText;
+      this.dialog.showModal();
+    }
+
+    scrollToComment(commentId: any) {
+      const comment = this.commentsList.querySelector(
+        `[data-comment-id="${commentId}"]`
+      );
+      if (comment) {
+        comment.scrollIntoView({ behavior: "smooth", block: "center" });
+        comment.classList.add("highlighted");
+        setTimeout(() => {
+          comment.classList.remove("highlighted");
+        }, 2000);
+      }
+    }
+
+    async handleSubmit(e: { preventDefault: () => void }) {
+      e.preventDefault();
+      this.submitBtn.disabled = true;
+      this.submitBtn.textContent = "Posting...";
+
+      const formData = new FormData(this.form);
+      formData.append("timestamp", Date.now().toString());
+
+      try {
+        const response = await fetch("/api/submit-comment", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to submit comment");
+        }
+
+        this.saveUserInfo();
+        await this.loadComments();
+        this.closeDialog();
+        this.form.reset();
+        this.loadUserInfo();
+      } catch (error) {
+        console.error("Error submitting comment:", error);
+        alert("Failed to submit comment. Please try again.");
+      } finally {
+        this.submitBtn.disabled = false;
+        this.submitBtn.textContent = "Post Comment";
+      }
+    }
+
+    closeDialog() {
+      this.dialog.close();
+      this.removeAddCommentButton();
+    }
+
+    async loadComments() {
+      try {
+        const response = await fetch(`/api/comments/${this.sectionId}`);
+        const comments = await response.json();
+
+        this.content.innerHTML = this.highlightableContent;
+        this.commentLocations.clear();
+
+        this.commentsList.innerHTML = comments
+          ?.map(
+            (
+              comment: {
+                selectedText: any;
+                name: any;
+                timestamp: string | number | Date;
+                content: any;
+              },
+              index: any
+            ) => {
+              const commentId = `comment-${this.sectionId}-${index}`;
+              this.commentLocations.set(commentId, comment.selectedText);
+
+              return `
+            <div class="comment" data-comment-id="${commentId}">
+              <div class="comment-header">
+                <span class="commenter-name">${comment.name || "Anonymous"}</span>
+                <span class="comment-date">
+                  ${new Date(comment.timestamp).toLocaleDateString()}
+                </span>
+              </div>
+              <blockquote class="comment-reference">${comment.selectedText}</blockquote>
+              <p class="comment-content">${comment.content}</p>
+            </div>
+          `;
+            }
+          )
+          .join("");
+
+        this.addHighlightListeners();
+        this.markCommentedText();
+      } catch (error) {
+        console.error("Error loading comments:", error);
+      }
+    }
+
+    markCommentedText() {
+      let contentHTML = this.content.innerHTML;
+
+      const locations = Array.from(this.commentLocations.entries()).sort(
+        (a, b) => b[1].length - a[1].length
+      );
+
+      locations.forEach(([commentId, text]) => {
+        const escapedText = text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const regex = new RegExp(`(${escapedText})`, "g");
+        contentHTML = contentHTML.replace(
+          regex,
+          `<span class="commentable-text" data-comment-id="${commentId}">$1</span>`
+        );
+      });
+
+      this.content.innerHTML = contentHTML;
+    }
+
+    addHighlightListeners() {
+      const comments = this.commentsList.querySelectorAll(".comment");
+      comments.forEach(
+        (comment: {
+          addEventListener: (
+            arg0: string,
+            arg1: { (): void; (): void }
+          ) => void;
+          dataset: { commentId: any };
+        }) => {
+          comment.addEventListener("mouseenter", () =>
+            this.highlightText(comment.dataset.commentId)
+          );
+          comment.addEventListener("mouseleave", () =>
+            this.unhighlightText(comment.dataset.commentId)
+          );
+        }
+      );
+
+      const textSpans = this.content.querySelectorAll(".commentable-text");
+      textSpans.forEach(
+        (span: {
+          addEventListener: (
+            arg0: string,
+            arg1: { (): void; (): void; (): void }
+          ) => void;
+          dataset: { commentId: any };
+        }) => {
+          span.addEventListener("mouseenter", () =>
+            this.highlightComment(span.dataset.commentId)
+          );
+          span.addEventListener("mouseleave", () =>
+            this.unhighlightComment(span.dataset.commentId)
+          );
+          span.addEventListener("click", () =>
+            this.scrollToComment(span.dataset.commentId)
+          );
+        }
+      );
+    }
+
+    highlightText(commentId: any) {
+      const spans = this.content.querySelectorAll(
+        `[data-comment-id="${commentId}"]`
+      );
+      spans.forEach((span: { classList: { add: (arg0: string) => any } }) =>
+        span.classList.add("highlighted")
+      );
+    }
+
+    unhighlightText(commentId: any) {
+      const spans = this.content.querySelectorAll(
+        `[data-comment-id="${commentId}"]`
+      );
+      spans.forEach((span: { classList: { remove: (arg0: string) => any } }) =>
+        span.classList.remove("highlighted")
+      );
+    }
+
+    highlightComment(commentId: any) {
+      const comment = this.commentsList.querySelector(
+        `[data-comment-id="${commentId}"]`
+      );
+      comment?.classList.add("highlighted");
+    }
+
+    unhighlightComment(commentId: any) {
+      const comment = this.commentsList.querySelector(
+        `[data-comment-id="${commentId}"]`
+      );
+      comment?.classList.remove("highlighted");
+    }
+  }
+
+  // Initialize all comment sections
+  document
+    .querySelectorAll<HTMLElement>(".commentable-section")
+    .forEach((section) => {
+      new CommentSection(section);
+    });
+</script>
+
+<style>
+  :root {
+    --comment-primary-color: #3b82f6;
+    --comment-text-color: #1f2937;
+    --comment-border-color: #e5e7eb;
+    --comment-bg-color: #ffffff;
+    --comment-hover-bg: #f3f4f6;
+    --comment-selection-bg: #dbeafe;
+    --comment-error-color: #ef4444;
+    --comment-spacing: 1rem;
+    --comment-border-radius: 0.375rem;
+    --comment-transition: 200ms ease-in-out;
+    --comment-highlight-color: rgba(59, 130, 246, 0.1);
+  }
+
+  .commentable-section {
+    position: relative;
+    max-width: 42rem;
+    margin: 0 auto;
+    font-family:
+      system-ui,
+      -apple-system,
+      sans-serif;
+  }
+
+  .content {
+    padding: var(--comment-spacing);
+    border-radius: var(--comment-border-radius);
+    transition: background-color var(--comment-transition);
+  }
+
+  .comment-dialog {
+    padding: var(--comment-spacing);
+    border: 1px solid var(--comment-border-color);
+    border-radius: var(--comment-border-radius);
+    max-width: 32rem;
+    width: 100%;
+  }
+
+  .comment-dialog::backdrop {
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+  }
+
+  .form-group {
+    margin-bottom: var(--comment-spacing);
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--comment-text-color);
+  }
+
+  .form-group input,
+  .form-group textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--comment-border-color);
+    border-radius: var(--comment-border-radius);
+    font-family: inherit;
+    font-size: 1rem;
+  }
+
+  .honeypot {
+    display: none;
+  }
+
+  .selected-text-display {
+    margin-bottom: var(--comment-spacing);
+  }
+
+  .selected-text-display h3 {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .selected-text-display blockquote {
+    border-left: 3px solid var(--comment-primary-color);
+    padding-left: 1rem;
+    margin: 0;
+    color: var(--comment-text-color);
+    font-style: italic;
+  }
+
+  .button-group {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+
+  .button-group button {
+    padding: 0.5rem 1rem;
+    border-radius: var(--comment-border-radius);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: opacity var(--comment-transition);
+  }
+
+  .cancel-btn {
+    border: 1px solid var(--comment-border-color);
+    background: var(--comment-bg-color);
+    color: var(--comment-text-color);
+  }
+
+  .submit-btn {
+    border: none;
+    background: var(--comment-primary-color);
+    color: white;
+  }
+
+  .submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .floating-comment-button {
+    position: fixed;
+    z-index: 1000;
+    padding: 0.5rem 1rem;
+    background-color: var(--comment-primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--comment-border-radius);
+    cursor: pointer;
+    font-size: 0.875rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(5px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .commentable-text {
+    border-bottom: 2px dotted transparent;
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
+  }
+
+  .commentable-text:hover {
+    background-color: var(--comment-highlight-color);
+    border-bottom-color: var(--comment-primary-color);
+  }
+
+  .commentable-text.highlighted {
+    background-color: var(--comment-highlight-color);
+    border-bottom-color: var(--comment-primary-color);
+  }
+
+  .comments-list {
+    margin-top: calc(var(--comment-spacing) * 2);
+  }
+  .comment {
+    padding: var(--comment-spacing);
+    border-left: 2px solid var(--comment-primary-color);
+    margin-bottom: var(--comment-spacing);
+    background: var(--comment-bg-color);
+    transition: all 0.2s ease-in-out;
+    position: relative;
+    border-radius: 0 var(--comment-border-radius) var(--comment-border-radius) 0;
+  }
+
+  .comment.highlighted {
+    background-color: var(--comment-highlight-color);
+    transform: translateX(0.5rem);
+  }
+
+  .comment-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .commenter-name {
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: var(--comment-text-color);
+  }
+
+  .comment-date {
+    font-size: 0.75rem;
+    color: #666;
+  }
+
+  .comment-reference {
+    font-size: 0.875rem;
+    color: #666;
+    margin: 0.5rem 0;
+    padding-left: 0.75rem;
+    border-left: 2px solid var(--comment-border-color);
+    font-style: italic;
+  }
+
+  .comment-content {
+    margin: 0;
+    line-height: 1.5;
+    color: var(--comment-text-color);
+  }
+
+  /* Focus styles for accessibility */
+  button:focus,
+  input:focus,
+  textarea:focus {
+    outline: 2px solid var(--comment-primary-color);
+    outline-offset: 2px;
+  }
+
+  button:focus:not(:focus-visible),
+  input:focus:not(:focus-visible),
+  textarea:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* Hover states */
+  .cancel-btn:hover {
+    background-color: var(--comment-hover-bg);
+  }
+
+  .submit-btn:hover:not(:disabled) {
+    opacity: 0.9;
+  }
+
+  .floating-comment-button:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+  }
+
+  /* Loading states */
+  .submit-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  /* Animation for comment highlight */
+  @keyframes highlightPulse {
+    0% {
+      background-color: var(--comment-highlight-color);
+    }
+    50% {
+      background-color: var(--comment-selection-bg);
+    }
+    100% {
+      background-color: var(--comment-highlight-color);
+    }
+  }
+
+  .comment.highlighted {
+    animation: highlightPulse 2s ease-in-out;
+  }
+
+  /* Dark mode support */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --comment-text-color: #e5e7eb;
+      --comment-border-color: #374151;
+      --comment-bg-color: #1f2937;
+      --comment-hover-bg: #374151;
+      --comment-selection-bg: #1e3a8a;
+      --comment-highlight-color: rgba(59, 130, 246, 0.2);
+    }
+
+    .comment-date {
+      color: #9ca3af;
+    }
+
+    .comment-reference {
+      color: #9ca3af;
+      border-left-color: #4b5563;
+    }
+
+    .floating-comment-button {
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+  }
+
+  /* Mobile responsiveness */
+  @media (max-width: 640px) {
+    .comment-dialog {
+      margin: 1rem;
+      width: calc(100% - 2rem);
+    }
+
+    .button-group {
+      flex-direction: column;
+    }
+
+    .button-group button {
+      width: 100%;
+    }
+
+    .comment {
+      padding: 0.75rem;
+    }
+
+    .floating-comment-button {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8125rem;
+    }
+  }
+
+  /* Print styles */
+  @media print {
+    .commentable-text {
+      border-bottom: none;
+      background: none !important;
+    }
+
+    .floating-comment-button {
+      display: none;
+    }
+
+    .comment {
+      break-inside: avoid;
+      border: 1px solid #ddd;
+      margin: 1rem 0;
+      page-break-inside: avoid;
+    }
+  }
+</style>
