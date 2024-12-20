@@ -14,21 +14,19 @@ const { sectionId } = Astro.props;
 
   <dialog class="comment-dialog">
     <form class="comment-form">
-      <div class="selected-text-display">
-        <h3>Add comment to:</h3>
+      <div class="selected-text-display full">
+        <h3>Comment on:</h3>
         <blockquote></blockquote>
       </div>
 
       <div class="form-group">
-        <label>Name (optional)</label>
-        <input type="text" name="name" />
-      </div>
-
-      <div class="form-group">
-        <label>Email (required, not displayed)</label>
+        <label>Email <small>(required, not displayed)</small></label>
         <input type="email" name="email" required />
       </div>
-
+      <div class="form-group">
+        <label>Name <small>(optional)</small></label>
+        <input type="text" name="name" />
+      </div>
       <input
         type="text"
         name="honeypot"
@@ -37,7 +35,7 @@ const { sectionId } = Astro.props;
         autocomplete="off"
       />
 
-      <div class="form-group">
+      <div class="form-group full">
         <label>Your comment</label>
         <textarea name="content" required rows="4"></textarea>
       </div>
@@ -45,17 +43,30 @@ const { sectionId } = Astro.props;
       <input type="hidden" name="selectedText" />
       <input type="hidden" name="timestamp" />
 
-      <div class="button-group">
+      <div class="button-group full">
         <button type="button" class="cancel-btn">Cancel</button>
         <button type="submit" class="submit-btn">Post Comment</button>
       </div>
     </form>
   </dialog>
 
-  <div class="comments-list"></div>
+  <h3>Comments</h3>
+  <div class="comments-list">
+    <p>Loading comments...</p>
+  </div>
 </section>
-
 <script>
+  const el = <T extends Element>(
+    selector: string,
+    node: ParentNode = document.body
+  ): T | null => node.querySelector(selector);
+  const els = <T extends Element>(
+    selector: string,
+    node: ParentNode = document.body
+  ): NodeListOf<T> => node.querySelectorAll(selector);
+  const on = (target: any, event: string, handler: any) =>
+    target.addEventListener(event, handler);
+
   class CommentSection {
     section: any;
     sectionId: any;
@@ -68,21 +79,22 @@ const { sectionId } = Astro.props;
     submitBtn: any;
     highlightableContent: any;
     commentLocations: Map<any, any>;
+
     constructor(element: HTMLElement) {
       this.section = element;
       this.sectionId = element.dataset.sectionId;
-      this.content = element.querySelector(".content");
-      this.dialog = element.querySelector(".comment-dialog");
-      this.form = element.querySelector(".comment-form");
-      this.commentsList = element.querySelector(".comments-list");
-      this.selectedTextDisplay = element.querySelector(
-        ".selected-text-display blockquote"
+      this.content = el(".content", element);
+      this.dialog = el(".comment-dialog", element);
+      this.form = el(".comment-form", element);
+      this.commentsList = el(".comments-list", element);
+      this.selectedTextDisplay = el(
+        ".selected-text-display blockquote",
+        element
       );
-      this.cancelBtn = element.querySelector(".cancel-btn");
-      this.submitBtn = element.querySelector(".submit-btn");
+      this.cancelBtn = el(".cancel-btn", element);
+      this.submitBtn = el(".submit-btn", element);
 
-      this.highlightableContent =
-        element.querySelector<HTMLElement>(".content")?.innerHTML;
+      this.highlightableContent = el(".content", element)?.innerHTML;
       this.commentLocations = new Map();
 
       this.loadUserInfo();
@@ -91,40 +103,45 @@ const { sectionId } = Astro.props;
     }
 
     loadUserInfo() {
-      const storedName = localStorage.getItem("commenter-name");
-      const storedEmail = localStorage.getItem("commenter-email");
+      const storedInfo = localStorage.getItem("commenter-info");
+      if (!storedInfo) return;
 
-      if (storedName) {
-        this.form.querySelector('[name="name"]').value = storedName;
-      }
-      if (storedEmail) {
-        this.form.querySelector('[name="email"]').value = storedEmail;
+      try {
+        const { name, email } = JSON.parse(storedInfo);
+        el<HTMLInputElement>('[name="name"]', this.form)!.value = name;
+        el<HTMLInputElement>('[name="email"]', this.form)!.value = email;
+      } catch (error) {
+        console.error("Error loading user info:", error);
       }
     }
 
     saveUserInfo() {
-      const name = this.form.querySelector('[name="name"]').value;
-      const email = this.form.querySelector('[name="email"]').value;
+      const data = new FormData(this.form);
+      const name = data.get("name");
+      const email = data.get("email");
 
-      localStorage.setItem("commenter-name", name);
-      localStorage.setItem("commenter-email", email);
+      localStorage.setItem("commenter-info", JSON.stringify({ name, email }));
     }
 
     initializeListeners() {
-      this.cancelBtn.addEventListener("click", () => this.closeDialog());
-      this.form.addEventListener("submit", (e: any) => this.handleSubmit(e));
+      on(this.cancelBtn, "click", () => this.closeDialog());
+      on(this.form, "submit", (e: SubmitEvent) => this.handleSubmit(e));
 
-      document.addEventListener("mouseup", (e) => {
-        if (!this.dialog.open) {
-          this.handleSelection(e);
-        }
+      on(document, "mouseup", (e: MouseEvent) => {
+        if (this.dialog.open) return;
+        this.handleSelection(e);
       });
 
-      // Close floating button when clicking outside
-      document.addEventListener("mousedown", (e) => {
-        if (!(e.target as Element)?.closest(".floating-comment-button")) {
-          this.removeAddCommentButton();
+      // Close floating button when clicking outside, or toggle dialog when clicking on it
+      on(document, "mousedown", (e: MouseEvent) => {
+        const button = (e.target as Element)?.closest<HTMLButtonElement>(
+          ".floating-comment-button"
+        );
+        if (button) {
+          this.openCommentDialog(button.value);
+          this.dialog.showModal();
         }
+        this.removeAddCommentButton();
       });
     }
 
@@ -139,10 +156,7 @@ const { sectionId } = Astro.props;
       }
     }
 
-    showAddCommentButton(
-      event: { pageX: number; pageY: number },
-      selectedText: string
-    ) {
+    showAddCommentButton(event: MouseEvent, selectedText: string) {
       this.removeAddCommentButton();
 
       const button = document.createElement("button");
@@ -151,39 +165,38 @@ const { sectionId } = Astro.props;
       button.style.position = "absolute";
       button.style.left = `${event.pageX + 10}px`;
       button.style.top = `${event.pageY + 10}px`;
-
-      button.addEventListener("click", () => {
-        this.removeAddCommentButton();
-        this.openCommentDialog(selectedText);
-      });
+      button.value = selectedText;
 
       document.body.appendChild(button);
     }
 
     removeAddCommentButton() {
-      const existingButton = document.querySelector(".floating-comment-button");
-      if (existingButton) {
-        existingButton.remove();
-      }
+      el(".floating-comment-button")?.remove();
     }
 
-    openCommentDialog(selectedText: any) {
-      this.selectedTextDisplay.textContent = selectedText;
+    openCommentDialog(selectedText: string) {
+      const limitTextLength = (text: string, maxLength: number) => {
+        const words = text.split(" ");
+        if (words.length <= maxLength) return text;
+        const start = words.slice(0, Math.floor(maxLength / 2)).join(" ");
+        const end = words.slice(-Math.floor(maxLength / 2)).join(" ");
+        return `${start} ... ${end}`;
+      };
+
+      this.selectedTextDisplay.textContent = limitTextLength(selectedText, 50);
       this.form.selectedText.value = selectedText;
       this.dialog.showModal();
     }
 
     scrollToComment(commentId: any) {
-      const comment = this.commentsList.querySelector(
-        `[data-comment-id="${commentId}"]`
-      );
-      if (comment) {
-        comment.scrollIntoView({ behavior: "smooth", block: "center" });
-        comment.classList.add("highlighted");
-        setTimeout(() => {
-          comment.classList.remove("highlighted");
-        }, 2000);
-      }
+      const comment = el(`[data-comment-id="${commentId}"]`, this.commentsList);
+      if (!comment) return;
+
+      comment.scrollIntoView({ behavior: "smooth", block: "center" });
+      comment.classList.add("highlighted");
+      setTimeout(() => {
+        comment.classList.remove("highlighted");
+      }, 2000);
     }
 
     async handleSubmit(e: { preventDefault: () => void }) {
@@ -194,10 +207,15 @@ const { sectionId } = Astro.props;
       const formData = new FormData(this.form);
       formData.append("timestamp", Date.now().toString());
 
+      const body = JSON.stringify(Object.fromEntries(formData.entries()));
+
       try {
-        const response = await fetch("/api/submit-comment", {
+        const response = await fetch(`/api/comments/${this.sectionId}`, {
           method: "POST",
-          body: formData,
+          body,
+          headers: {
+            "Content-Type": "application/json",
+          },
         });
 
         if (!response.ok) {
@@ -231,21 +249,23 @@ const { sectionId } = Astro.props;
         this.content.innerHTML = this.highlightableContent;
         this.commentLocations.clear();
 
-        this.commentsList.innerHTML = comments
-          ?.map(
-            (
-              comment: {
-                selectedText: any;
-                name: any;
-                timestamp: string | number | Date;
-                content: any;
-              },
-              index: any
-            ) => {
-              const commentId = `comment-${this.sectionId}-${index}`;
-              this.commentLocations.set(commentId, comment.selectedText);
+        this.commentsList.innerHTML = !comments.length
+          ? "<p><em>No comments yet.</em></p>"
+          : comments
+              ?.map(
+                (
+                  comment: {
+                    selectedText: any;
+                    name: any;
+                    timestamp: string | number | Date;
+                    content: any;
+                  },
+                  index: number
+                ) => {
+                  const commentId = `comment-${this.sectionId}-${index}`;
+                  this.commentLocations.set(commentId, comment.selectedText);
 
-              return `
+                  return `
             <div class="comment" data-comment-id="${commentId}">
               <div class="comment-header">
                 <span class="commenter-name">${comment.name || "Anonymous"}</span>
@@ -257,9 +277,9 @@ const { sectionId } = Astro.props;
               <p class="comment-content">${comment.content}</p>
             </div>
           `;
-            }
-          )
-          .join("");
+                }
+              )
+              .join("");
 
         this.addHighlightListeners();
         this.markCommentedText();
@@ -288,87 +308,55 @@ const { sectionId } = Astro.props;
     }
 
     addHighlightListeners() {
-      const comments = this.commentsList.querySelectorAll(".comment");
-      comments.forEach(
-        (comment: {
-          addEventListener: (
-            arg0: string,
-            arg1: { (): void; (): void }
-          ) => void;
-          dataset: { commentId: any };
-        }) => {
-          comment.addEventListener("mouseenter", () =>
-            this.highlightText(comment.dataset.commentId)
-          );
-          comment.addEventListener("mouseleave", () =>
-            this.unhighlightText(comment.dataset.commentId)
-          );
-        }
-      );
+      els<HTMLElement>(".comment").forEach((comment: HTMLElement) => {
+        on(comment, "mouseenter", () =>
+          this.highlightText(comment.dataset.commentId)
+        );
+        on(comment, "mouseleave", () =>
+          this.unhighlightText(comment.dataset.commentId)
+        );
+      });
 
       const textSpans = this.content.querySelectorAll(".commentable-text");
-      textSpans.forEach(
-        (span: {
-          addEventListener: (
-            arg0: string,
-            arg1: { (): void; (): void; (): void }
-          ) => void;
-          dataset: { commentId: any };
-        }) => {
-          span.addEventListener("mouseenter", () =>
-            this.highlightComment(span.dataset.commentId)
-          );
-          span.addEventListener("mouseleave", () =>
-            this.unhighlightComment(span.dataset.commentId)
-          );
-          span.addEventListener("click", () =>
-            this.scrollToComment(span.dataset.commentId)
-          );
-        }
-      );
+      textSpans.forEach((span: HTMLSpanElement) => {
+        on(span, "mouseenter", () =>
+          this.highlightComment(span.dataset.commentId)
+        );
+        on(span, "mouseleave", () =>
+          this.unhighlightComment(span.dataset.commentId)
+        );
+        on(span, "click", () => this.scrollToComment(span.dataset.commentId));
+      });
     }
 
     highlightText(commentId: any) {
-      const spans = this.content.querySelectorAll(
-        `[data-comment-id="${commentId}"]`
-      );
-      spans.forEach((span: { classList: { add: (arg0: string) => any } }) =>
+      els<HTMLSpanElement>(`[data-comment-id="${commentId}"]`).forEach((span) =>
         span.classList.add("highlighted")
       );
     }
 
     unhighlightText(commentId: any) {
-      const spans = this.content.querySelectorAll(
-        `[data-comment-id="${commentId}"]`
-      );
-      spans.forEach((span: { classList: { remove: (arg0: string) => any } }) =>
+      els<HTMLSpanElement>(`[data-comment-id="${commentId}"]`).forEach((span) =>
         span.classList.remove("highlighted")
       );
     }
 
     highlightComment(commentId: any) {
-      const comment = this.commentsList.querySelector(
-        `[data-comment-id="${commentId}"]`
-      );
+      const comment = el(`[data-comment-id="${commentId}"]`, this.commentsList);
       comment?.classList.add("highlighted");
     }
 
     unhighlightComment(commentId: any) {
-      const comment = this.commentsList.querySelector(
-        `[data-comment-id="${commentId}"]`
-      );
+      const comment = el(`[data-comment-id="${commentId}"]`, this.commentsList);
       comment?.classList.remove("highlighted");
     }
   }
 
   // Initialize all comment sections
-  document
-    .querySelectorAll<HTMLElement>(".commentable-section")
-    .forEach((section) => {
-      new CommentSection(section);
-    });
+  els<HTMLElement>(".commentable-section").forEach((section) => {
+    new CommentSection(section);
+  });
 </script>
-
 <style>
   :root {
     --comment-primary-color: #3b82f6;
@@ -386,25 +374,19 @@ const { sectionId } = Astro.props;
 
   .commentable-section {
     position: relative;
-    max-width: 42rem;
-    margin: 0 auto;
-    font-family:
-      system-ui,
-      -apple-system,
-      sans-serif;
   }
 
-  .content {
+  .content,
+  .comment-dialog {
     padding: var(--comment-spacing);
     border-radius: var(--comment-border-radius);
     transition: background-color var(--comment-transition);
   }
 
   .comment-dialog {
-    padding: var(--comment-spacing);
     border: 1px solid var(--comment-border-color);
-    border-radius: var(--comment-border-radius);
     max-width: 32rem;
+    margin: auto;
     width: 100%;
   }
 
@@ -413,8 +395,10 @@ const { sectionId } = Astro.props;
     backdrop-filter: blur(2px);
   }
 
-  .form-group {
-    margin-bottom: var(--comment-spacing);
+  .comment-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
   }
 
   .form-group label {
@@ -434,11 +418,20 @@ const { sectionId } = Astro.props;
     font-size: 1rem;
   }
 
+  .form-group textarea {
+    resize: vertical;
+  }
+
+  .full {
+    grid-column: 1 / -1;
+  }
+
   .honeypot {
     display: none;
   }
 
   .selected-text-display {
+    grid-column: span 2;
     margin-bottom: var(--comment-spacing);
   }
 
@@ -517,11 +510,7 @@ const { sectionId } = Astro.props;
     cursor: pointer;
   }
 
-  .commentable-text:hover {
-    background-color: var(--comment-highlight-color);
-    border-bottom-color: var(--comment-primary-color);
-  }
-
+  .commentable-text:hover,
   .commentable-text.highlighted {
     background-color: var(--comment-highlight-color);
     border-bottom-color: var(--comment-primary-color);
@@ -530,6 +519,7 @@ const { sectionId } = Astro.props;
   .comments-list {
     margin-top: calc(var(--comment-spacing) * 2);
   }
+
   .comment {
     padding: var(--comment-spacing);
     border-left: 2px solid var(--comment-primary-color);
@@ -543,6 +533,7 @@ const { sectionId } = Astro.props;
   .comment.highlighted {
     background-color: var(--comment-highlight-color);
     transform: translateX(0.5rem);
+    animation: highlightPulse 2s ease-in-out;
   }
 
   .comment-header {
@@ -558,14 +549,13 @@ const { sectionId } = Astro.props;
     color: var(--comment-text-color);
   }
 
-  .comment-date {
+  .comment-date,
+  .comment-reference {
     font-size: 0.75rem;
     color: #666;
   }
 
   .comment-reference {
-    font-size: 0.875rem;
-    color: #666;
     margin: 0.5rem 0;
     padding-left: 0.75rem;
     border-left: 2px solid var(--comment-border-color);
@@ -578,7 +568,6 @@ const { sectionId } = Astro.props;
     color: var(--comment-text-color);
   }
 
-  /* Focus styles for accessibility */
   button:focus,
   input:focus,
   textarea:focus {
@@ -592,44 +581,16 @@ const { sectionId } = Astro.props;
     outline: none;
   }
 
-  /* Hover states */
   .cancel-btn:hover {
     background-color: var(--comment-hover-bg);
   }
 
-  .submit-btn:hover:not(:disabled) {
-    opacity: 0.9;
-  }
-
+  .submit-btn:hover:not(:disabled),
   .floating-comment-button:hover {
     opacity: 0.9;
     transform: translateY(-1px);
   }
 
-  /* Loading states */
-  .submit-btn:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-  }
-
-  /* Animation for comment highlight */
-  @keyframes highlightPulse {
-    0% {
-      background-color: var(--comment-highlight-color);
-    }
-    50% {
-      background-color: var(--comment-selection-bg);
-    }
-    100% {
-      background-color: var(--comment-highlight-color);
-    }
-  }
-
-  .comment.highlighted {
-    animation: highlightPulse 2s ease-in-out;
-  }
-
-  /* Dark mode support */
   @media (prefers-color-scheme: dark) {
     :root {
       --comment-text-color: #e5e7eb;
@@ -640,12 +601,12 @@ const { sectionId } = Astro.props;
       --comment-highlight-color: rgba(59, 130, 246, 0.2);
     }
 
-    .comment-date {
+    .comment-date,
+    .comment-reference {
       color: #9ca3af;
     }
 
     .comment-reference {
-      color: #9ca3af;
       border-left-color: #4b5563;
     }
 
@@ -654,7 +615,6 @@ const { sectionId } = Astro.props;
     }
   }
 
-  /* Mobile responsiveness */
   @media (max-width: 640px) {
     .comment-dialog {
       margin: 1rem;
@@ -679,7 +639,6 @@ const { sectionId } = Astro.props;
     }
   }
 
-  /* Print styles */
   @media print {
     .commentable-text {
       border-bottom: none;

@@ -1,9 +1,29 @@
 ---
-import type { Props } from "@astrojs/starlight/props";
-import Default from "@astrojs/starlight/components/MarkdownContent.astro";
+import type { Props as _Props } from "@astrojs/starlight/props";
+import MarkdownContent from "@astrojs/starlight/components/MarkdownContent.astro";
 import CommentSection from "./CommentSection.astro";
+
+interface Props extends _Props {
+  hideComments?: boolean;
+}
+
+console.log(Object.keys(Astro.props.entry.data));
+const slug = Astro.url.pathname
+  .replace(/\//g, "-")
+  .replace(/^-/, "")
+  .replace(/-$/, "");
 ---
 
-<CommentSection sectionId={Astro.url.pathname}>
-  <Default {...Astro.props} />
-</CommentSection>
+{
+  !Astro.props.hideComments ? (
+    <CommentSection sectionId={slug}>
+      <MarkdownContent {...Astro.props}>
+        <slot />
+      </MarkdownContent>
+    </CommentSection>
+  ) : (
+    <MarkdownContent {...Astro.props}>
+      <slot />
+    </MarkdownContent>
+  )
+}

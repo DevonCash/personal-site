@@ -3,6 +3,17 @@ import { Octokit } from "@octokit/rest";
 
 export const prerender = false;
 
+if (!import.meta.env.GITHUB_TOKEN) {
+  console.warn(
+    "GITHUB_TOKEN is required: https://github.com/settings/tokens/new"
+  );
+}
+
+const repo = {
+  owner: "DevonCash",
+  repo: "personal-site",
+};
+
 const octokit = new Octokit({
   auth: import.meta.env.GITHUB_TOKEN,
 });
@@ -10,10 +21,8 @@ const octokit = new Octokit({
 export const GET: APIRoute = async ({ params }) => {
   try {
     const { data: issues } = await octokit.issues.listForRepo({
-      owner: "your-username",
-      repo: "your-repo",
+      ...repo,
       labels: "anonymous-comment",
-      state: "open",
     });
 
     const sectionComments = issues
@@ -26,9 +35,68 @@ export const GET: APIRoute = async ({ params }) => {
         timestamp: issue.created_at,
       }));
 
+    console.log(sectionComments);
     return new Response(JSON.stringify(sectionComments));
   } catch (error) {
     return new Response(JSON.stringify({ error: "Failed to load comments" }), {
+      status: 500,
+    });
+  }
+};
+
+export const POST: APIRoute = async ({ request }) => {
+  const formData = await request.json();
+
+  // Check honeypot
+  if (formData.honeypot) {
+    return new Response(JSON.stringify({ error: "Invalid submission" }), {
+      status: 400,
+    });
+  }
+
+  // Email required
+  const emailHash = formData.email
+    ? await crypto.subtle.digest(
+        "sha-256",
+        new TextEncoder().encode(formData.email)
+      )
+    : null;
+
+  try {
+    await octokit.issues.create({
+      ...repo,
+      title: `[Anonymous Comment] ${formData.selectedText
+        ?.toString()
+        .substring(0, 50)}...`,
+      body: `
+Anonymous Comment from: ${formData.name || "Anonymous"}
+
+${formData.content}
+
+Selected Text: "${formData.selectedText}"
+
+<!-- metadata
+${JSON.stringify(
+  {
+    timestamp: formData.timestamp,
+    email: emailHash
+      ? Array.from(new Uint8Array(emailHash))
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("")
+      : null,
+  },
+  null,
+  2
+)}
+-->
+      `,
+      labels: ["anonymous-comment", "needs-review"],
+    });
+
+    return new Response(JSON.stringify({ success: true }));
+  } catch (error) {
+    console.error(error);
+    return new Response(JSON.stringify({ error: "Failed to submit comment" }), {
       status: 500,
     });
   }

@@ -1,0 +1,39 @@
+---
+import StarlightPage from "@astrojs/starlight/components/StarlightPage.astro";
+import { Card, CardGrid, LinkButton } from "@astrojs/starlight/components";
+import { getCollection } from "astro:content";
+
+const categories = Object.groupBy(
+  await getCollection("docs", (doc) => {
+    const toks = doc.slug.split('/');
+    return toks.length === 2 || (toks.length === 3 && toks[2].startsWith('index'));
+  }), // Get top-level docs
+  (doc) => doc.id.split("/")[0] // Group by category
+);
+---
+
+<StarlightPage
+  hideComments={true}
+  frontmatter={{
+    title: "devon.cash",
+    description: "Personal projects of Devon Cash",
+    template: "splash",
+    hero: {
+      tagline: "The unfinished ruins of my personal projects.",
+    },
+  }}
+>
+{Object.entries(categories).map(([category, docs]) => (
+    <h2>{category}</h2>
+    <CardGrid stagger>
+      {
+        docs?.map((doc) => (
+          <Card title={doc.data.title}>
+            <div>{doc.data.description}</div>
+            <LinkButton href={doc.slug}>Read more</LinkButton>
+          </Card>
+        ))
+      }
+    </CardGrid>
+  ))}
+</StarlightPage>

@@ -9,6 +9,9 @@ export default defineConfig({
       title: "devon.cash",
       customCss: ["./src/styles/custom.css"],
       plugins: [],
+      components: {
+        "MarkdownContent": "./src/components/CommentablePage.astro",
+      }
     }),
   ],
 });
