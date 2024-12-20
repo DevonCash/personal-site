@@ -35,7 +35,6 @@ export const GET: APIRoute = async ({ params }) => {
         timestamp: issue.created_at,
       }));
 
-    console.log(sectionComments);
     return new Response(JSON.stringify(sectionComments));
   } catch (error) {
     return new Response(JSON.stringify({ error: "Failed to load comments" }), {
