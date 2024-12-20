@@ -6,15 +6,13 @@ sidebar:
     order: 3
 ---
 
-The Keepers embody the pursuit of knowledge and understanding in its purest form. Operating from their endless Library demiplane, they seek to comprehend the fundamental nature of magic, reality, and the universe itself. While public perception often casts them as detached academics, their work forms the theoretical foundation that enables the other factions' practical applications of the Light's power.
+The Keepers embody the pursuit of knowledge and understanding in its purest form. Operating from their endless Library demiplane, they seek to comprehend the fundamental nature of magic, reality, and the universe itself. While public perception casts them as detached academics, their work forms the theoretical foundation that enables the other factions' practical applications of the Light's power.
 
 ## Core Principles
 
 - **Rationality**: Approach all questions with logic and systematic inquiry
 - **Understanding**: Seek comprehensive knowledge rather than surface-level answers
 - **Curiosity**: Never stop questioning and exploring the nature of reality
-
-These principles manifest in everything from their governance structure - a rotating council of randomly selected masters - to their research methodologies and training programs.
 
 ## Members
 

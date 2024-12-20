@@ -1,5 +1,6 @@
 ---
-title: "Words Without Number: Eberron"
+title: "Worlds Without Number: Eberron"
+description: A WWN port of Eberron character features
 ---
 ## What is this?
 
