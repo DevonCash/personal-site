@@ -1,5 +1,6 @@
 {
-  "name": "tome",
+  "name": "devon.cash",
+  "description": "Devon Cash - A personal website",
   "type": "module",
   "version": "0.0.1",
   "scripts": {
