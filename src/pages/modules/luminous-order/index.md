@@ -5,7 +5,6 @@ sidebar:
     label: 01. Introduction
     order: 1
 ---
-# Introduction
 
 Welcome to *The Luminous Order*, a drop-in module containing details of a powerful interstellar organization that can be used to enhance your Dungeons & Dragons campaign.
 

@@ -1,0 +1,4 @@
+- { value: No armor, weight: 3 }
+- { value: Gambeson, weight: 11 }
+- { value: Brigandine, weight: 5 }
+- { value: Chain, weight: 1 }

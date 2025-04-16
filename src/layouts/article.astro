@@ -1,0 +1,237 @@
+---
+import SiteLayout from "./site.astro";
+
+// ./src/layouts/BlogPost.astro
+export interface Props {
+  content: {
+    title: string;
+  };
+  headings: {
+    slug: string;
+    text: string;
+    depth: number;
+  }[];
+  frontmatter: {
+    title: string;
+    topic: string;
+    file: string;
+    url: string;
+    description: string;
+  };
+}
+const {
+  content: { title },
+  headings,
+  frontmatter,
+} = Astro.props;
+console.log(headings);
+---
+
+<SiteLayout>
+  <div class="article-container">
+    <aside>
+      <nav>
+        <ul>
+          <li>
+            <a href="/">Home</a>
+          </li>
+        </ul>
+      </nav>
+    </aside>
+    <main>
+      <article>
+        <header>
+          <h1 id="title">{frontmatter.title}</h1>
+          <p class="date">{frontmatter.date}</p>
+          <p class="description">{frontmatter.description}</p>
+        </header>
+        <slot />
+      </article>
+    </main>
+    <aside>
+      <div class="toc">
+        <h3>Table of Contents</h3>
+        <ul>
+          <li>
+            <a href="#title">{frontmatter.title}</a>
+          </li>
+          {
+            headings.map(({ depth, slug, text }) => (
+              <li data-depth={depth}>
+                <a href={`#${slug}`}>{text}</a>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </aside>
+  </div>
+</SiteLayout>
+
+<script>
+  // github.com/rezahedi/rezahedi.dev/blob/main/src/layouts/BlogPost.astro
+  // Source: https://kld.dev/toc-animation/#marking-active-links
+  function addIntersectionObserver() {
+    const observer = new IntersectionObserver((sections) => {
+      sections.forEach((section) => {
+        const heading = section.target.querySelector("h2, h3, h4, h5");
+        if (!heading) return;
+        const id = heading.getAttribute("id");
+        const link = document.querySelector(`.toc a[href="#${id}"]`);
+        if (!link) return;
+        link.classList.toggle("active", section.intersectionRatio > 0);
+      });
+    });
+
+    document.querySelectorAll("article section").forEach((section) => {
+      observer.observe(section);
+    });
+  }
+
+  addIntersectionObserver();
+</script>
+
+<style>
+  .article-container {
+    display: grid;
+    grid-template-columns: 1fr minmax(auto, 2fr) 1fr;
+  }
+
+  article {
+    max-width: 50em;
+    padding: 2em;
+    border-left: 2px dotted currentColor;
+  }
+  article :global(p) {
+    line-height: 1.3em;
+  }
+
+  article :global(> p:first-of-type::first-letter) {
+    color: var(--color-accent);
+    font-size: 1.5em;
+    line-height: 1;
+    font-family: "Major Mono Display", monospace;
+  }
+  header {
+    border-bottom: 2px solid currentColor;
+    margin: 0 -1em 0;
+    padding: 0 1em;
+  }
+  article :global(p) {
+    margin: 1.5em 0;
+  }
+
+  article :global(li) {
+    margin-left: 1.5em;
+    margin-bottom: 0.5em;
+  }
+
+  @media screen and (max-width: 600px) {
+    article :global(h2, h3, h4) {
+      margin: 1.5em 0 0.5em;
+      padding: 0;
+    }
+    article :global(p) {
+      margin: 1.5em 0;
+    }
+  }
+
+  .toc {
+    position: sticky;
+    top: 1em;
+    max-height: calc(100vh - 2em);
+    overflow-y: auto;
+    border: 2px solid currentColor;
+    padding: 1em;
+    margin: 1em;
+  }
+  .toc a {
+    transition: all 0.1s ease-in-out;
+  }
+
+  nav ul {
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+    align-items: flex-end;
+    overflow-x: hidden;
+  }
+
+  nav li {
+    position: relative;
+    list-style: none;
+    background-color: white;
+    max-width: 10em;
+    width: 50%;
+    overflow: hidden;
+    transform: translateX(1em);
+    transition: all 0.1s ease-in-out;
+  }
+
+  nav li:hover {
+    transform: translateX(0);
+  }
+
+  nav a::before {
+    background-color: var(--color-accent);
+    transform: translateX(100%);
+    transition: all 0.1s ease-in-out;
+    content: "";
+    position: absolute;
+    z-index: -1;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: 0;
+    height: 100%;
+    width: 100%;
+    pointer-events: none;
+  }
+
+  nav a:hover::before {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  nav {
+    position: sticky;
+    top: 1em;
+    max-height: calc(100vh - 2em);
+    overflow-y: auto;
+  }
+
+  nav a {
+    display: block;
+    padding: 0.5em;
+    border: 1px solid currentColor;
+    border-right: none;
+    text-decoration: none;
+    color: inherit;
+  }
+
+
+  .toc a {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .toc li {
+    border-left: 2px solid transparent;
+  }
+  .toc li:has(.active), .toc li:has([href="#title"]) {
+    font-weight: 600;
+    border-left: 2px solid currentColor;
+    color: var(--color-accent);
+  }
+
+  .toc li {
+    list-style: none;
+    padding-left: 0.5em;
+  }
+  .toc li[data-depth="3"] {
+    padding-left: 1.5em;
+  }
+  .toc li[data-depth="4"] {
+    padding-left: 2.5em;
+  }
+</style>

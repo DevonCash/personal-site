@@ -1,0 +1,4 @@
+- {value: None, weight: 13}
+- {value: Helmet, weight: 3}
+- {value: Shield, weight: 3}
+- {value: Helmet and Shield, weight: 1}

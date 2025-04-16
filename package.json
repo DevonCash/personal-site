@@ -15,7 +15,11 @@
     "@astrojs/starlight": "^0.29.2",
     "@octokit/rest": "^21.0.2",
     "astro": "^4.16.10",
+    "ress": "^5.0.2",
     "sharp": "^0.32.5",
     "starlight-sidebar-topics-dropdown": "^0.2.2"
+  },
+  "devDependencies": {
+    "@hbsnow/rehype-sectionize": "^1.0.7"
   }
 }

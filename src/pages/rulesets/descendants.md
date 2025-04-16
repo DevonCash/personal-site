@@ -2,7 +2,6 @@
 title: Descendents
 description: A tactical RPG about humanity's will to survive in a galaxy of conflict and mystery.
 ---
-# Table of Contents
 
 ## Introduction
 - What is This Game?

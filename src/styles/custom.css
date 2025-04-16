@@ -1,33 +1,45 @@
-@import url(https://fonts.bunny.net/css?family=atkinson-hyperlegible:400,700);
-/* Dark mode colors. */
 :root {
-    --sl-font: 'Atkinson Hyperlegible', sans-serif;
-
-
-	--sl-color-accent-low: #002934;
-	--sl-color-accent: #007591;
-	--sl-color-accent-high: #83d6f3;
-	--sl-color-white: #ffffff;
-	--sl-color-gray-1: #eeeded;
-	--sl-color-gray-2: #c9c8c8;
-	--sl-color-gray-3: #a5a3a3;
-	--sl-color-gray-4: #595857;
-	--sl-color-gray-5: #393837;
-	--sl-color-gray-6: #282626;
-	--sl-color-black: #191818;
+	--color-accent: orange;
 }
-/* Light mode colors. */
-:root[data-theme='light'] {
-	--sl-color-accent-low: #a6e2f7;
-	--sl-color-accent: #005469;
-	--sl-color-accent-high: #003948;
-	--sl-color-white: #191818;
-	--sl-color-gray-1: #282626;
-	--sl-color-gray-2: #393837;
-	--sl-color-gray-3: #595857;
-	--sl-color-gray-4: #8c8b8a;
-	--sl-color-gray-5: #c2c2c1;
-	--sl-color-gray-6: #eeeded;
-	--sl-color-gray-7: #f6f6f6;
-	--sl-color-black: #ffffff;
+html,
+body {
+  font-family: "Karla", sans-serif;
+  font-weight: 300;
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+li {
+	list-style: square;
+}
+
+h1,
+h2,
+h3 {
+  font-family: "Major Mono Display", monospace;
+  margin: 1em 0;
+}
+
+h1 {
+	font-size: 2.5em;
+}
+
+h1::first-letter,
+h2::first-letter,
+h3::first-letter {
+	color: var(--color-accent);
+}
+
+dt {
+	font-weight: 600;
+	margin-bottom: .5em;
+}
+
+dd {
+	margin-left: 1em;
+	margin-bottom: 1em;
+}
+
+b, strong {
+	font-weight: 600;
 }
